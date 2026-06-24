@@ -32,30 +32,29 @@ uint256 private _nextTokenId          // auto-incrément
 ## 2. Interface Oracle (mock + réel)
 - [x] Créer l'interface `IExchangeRateOracle` → `src/IExchangeRateOracle.sol`
 - [x] Créer `MockOracle.sol` → `test/mocks/MockOracle.sol` (`setAnswer` + `setUpdatedAt` pour simuler un oracle périmé)
-- [ ] Prévoir la vérification de **fraîcheur** du taux (timestamp périmé → rejet) — sera dans `BilletChain.sol`
+- [x] Vérification de fraîcheur dans `_getTicketPriceWei()` : `block.timestamp - updatedAt > MAX_STALENESS` → `revert StaleOracle()`
 
 ---
 
 ## 3. Smart contract principal — `BilletChain.sol`
-- [ ] Hériter d'**ERC-721** (OpenZeppelin)
-- [ ] Stocker à la création : nombre total de billets, prix en euros, adresse oracle
-- [ ] **Vente initiale** : `buyTicket()` — calcul prix en wei via oracle, paiement exact, mint NFT, mémoriser prix d'achat
-- [ ] **Mise en vente secondaire** : `listForResale(tokenId, price)` — vérifier propriété, vérifier plafond 110 %, appeler `approve(address(this), tokenId)`
-- [ ] **Achat secondaire** : `buyResale(tokenId)` — paiement exact, `transferFrom`, créditer vendeur (pull)
-- [ ] **Retrait** : `withdraw()` — pull payment pattern, protection réentrance
-- [ ] **Consultation gas-efficiente** : `countForSale(uint[] tokenIds)` — lecture pure, pas d'écriture
-- [ ] Émettre les **events** : `TicketMinted`, `TicketListed`, `TicketSold`, `Withdrawn`
-- [ ] Utiliser des **custom errors** (plus économes que `require("string")`)
-- [ ] Ajouter `ReentrancyGuard` (OpenZeppelin) sur les fonctions qui bougent des fonds
+- [x] Hériter d'**ERC-721** + `ReentrancyGuard` (OpenZeppelin)
+- [x] Stocker à la création : `totalTickets`, `ticketPriceEur`, `oracle`, `organizer`
+- [x] **Vente initiale** : `buyTicket()` — prix calculé via oracle, paiement exact, mint, mémorise `purchasePrice`, crédite `organizer`
+- [x] **Mise en vente secondaire** : `listForResale(tokenId, price)` — vérif propriété, plafond 110 %, approbation contract requise
+- [x] **Achat secondaire** : `buyResale(tokenId)` — paiement exact, re-vérif approbation, état avant transfert, crédite vendeur
+- [x] **Retrait** : `withdraw()` — pull payment, checks-effects-interactions, `nonReentrant`
+- [x] **Consultation gas-efficiente** : `countForSale(uint256[] calldata)` — `calldata` + `unchecked ++i`
+- [x] **Events** : `TicketMinted`, `TicketListed`, `TicketSold`, `Withdrawn`
+- [x] **Custom errors** : `SoldOut`, `WrongPayment`, `NotTicketOwner`, `PriceTooHigh`, `NotForSale`, `NotApproved`, `NothingToWithdraw`, `StaleOracle`, `InvalidOracleAnswer`
 
 ---
 
 ## 4. Sécurité — checklist avant de finir le contrat
-- [ ] **Réentrance** : `ReentrancyGuard` + pull payment (pas de call avant mise à jour d'état)
-- [ ] **Contrôle d'accès** : seul le propriétaire peut lister, seul l'organisateur retire sa part
-- [ ] **Oracle périmé** : vérifier `updatedAt` + seuil max (ex : 1h)
-- [ ] **Paiement exact** : `msg.value != prixCalculé` → revert (pas de tolérance silencieuse)
-- [ ] **Plafond revente** : calcul 110 % sans overflow (Solidity ≥ 0.8 protège, mais vérifier)
+- [x] **Réentrance** : `nonReentrant` sur `buyTicket`, `buyResale`, `withdraw` + état mis à jour avant tout `call`
+- [x] **Contrôle d'accès** : `ownerOf(tokenId) != msg.sender` → revert dans `listForResale`
+- [x] **Oracle périmé** : `MAX_STALENESS = 1 hours`, revert `StaleOracle`
+- [x] **Paiement exact** : `msg.value != price` → `revert WrongPayment(expected, sent)`
+- [x] **Plafond revente** : `purchasePrice[tokenId] * 110 / 100` — Solidity 0.8 protège l'overflow
 
 ---
 
