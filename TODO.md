@@ -7,7 +7,7 @@
 
 ---
 
-## 1. Conception de l'architecture (avant de coder)
+## 1. Conception de l'architecture
 - [x] **1 contrat unique** (`BilletChain.sol`) — pas de séparation NFT/marketplace. Moins de surface d'attaque, pas d'appels cross-contrat, plus économe en gas.
 - [x] **ERC-721** (OpenZeppelin) — billets non fongibles, chaque `tokenId` = une place identifiée.
 - [x] **Oracle** : interface `IExchangeRateOracle` calquée sur Chainlink `AggregatorV3Interface` — `latestRoundData()` retourne le prix ETH/EUR (nb de EUR pour 1 ETH, 8 décimales). Prix en wei = `ticketPriceEur * 1e26 / ethPriceInEur`.
@@ -93,14 +93,14 @@ uint256 private _nextTokenId          // auto-incrément
 
 ---
 
-## 7. Note de déploiement (½ page)
+## 7. Note de déploiement
 - [ ] Réseau de test : Sepolia (Chainlink y a des price feeds EUR/ETH)
 - [ ] Valeurs passées au constructeur : `totalTickets`, `priceInEuros`, adresse oracle Chainlink
 - [ ] Adresse du price feed : chercher sur `docs.chain.link` → Sepolia → EUR/ETH
 
 ---
 
-## 8. Bonus (si temps restant)
+## 8. Bonus
 - [ ] Frais de plateforme sur les reventes
 - [ ] Remboursement du trop-perçu
 - [ ] Pause d'urgence (`Pausable` OpenZeppelin)
