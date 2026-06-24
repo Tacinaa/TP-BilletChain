@@ -30,9 +30,9 @@ uint256 private _nextTokenId          // auto-incrément
 ---
 
 ## 2. Interface Oracle (mock + réel)
-- [ ] Créer l'interface `IExchangeRateOracle` (fonction `latestRoundData` ou similaire)
-- [ ] Créer un `MockOracle.sol` pour les tests (retourne un taux configurable + timestamp)
-- [ ] Prévoir la vérification de **fraîcheur** du taux (timestamp périmé → rejet)
+- [x] Créer l'interface `IExchangeRateOracle` → `src/IExchangeRateOracle.sol`
+- [x] Créer `MockOracle.sol` → `test/mocks/MockOracle.sol` (`setAnswer` + `setUpdatedAt` pour simuler un oracle périmé)
+- [ ] Prévoir la vérification de **fraîcheur** du taux (timestamp périmé → rejet) — sera dans `BilletChain.sol`
 
 ---
 
