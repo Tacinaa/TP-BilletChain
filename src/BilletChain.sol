@@ -3,9 +3,10 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./IExchangeRateOracle.sol";
 
-contract BilletChain is ERC721, ReentrancyGuard {
+contract BilletChain is ERC721, ReentrancyGuard, Pausable {
 
     // ── Errors ───────────────────────────────────────────────────────────────
     error SoldOut();
@@ -25,8 +26,9 @@ contract BilletChain is ERC721, ReentrancyGuard {
     event Withdrawn   (address indexed account, uint256 amount);
 
     // ── Constants ────────────────────────────────────────────────────────────
-    uint256 public constant MAX_STALENESS  = 1 hours; // taux oracle accepté jusqu'à 1h
-    uint256 public constant RESALE_CAP_PCT = 110;     // plafond revente : 110 % du prix initial
+    uint256 public constant MAX_STALENESS    = 1 hours;
+    uint256 public constant RESALE_CAP_PCT   = 110;
+    uint256 public constant PLATFORM_FEE_PCT = 5;     // frais de plateforme sur les reventes
 
     // ── Immutables ───────────────────────────────────────────────────────────
     uint256 public immutable totalTickets;
@@ -75,25 +77,43 @@ contract BilletChain is ERC721, ReentrancyGuard {
         return ticketPriceEur * 1e26 / uint256(answer);
     }
 
+    // ── Pause d'urgence (organisateur uniquement) ────────────────────────────
+    function pause() external {
+        require(msg.sender == organizer, "not organizer");
+        _pause();
+    }
+
+    function unpause() external {
+        require(msg.sender == organizer, "not organizer");
+        _unpause();
+    }
+
     // ── Vente initiale ───────────────────────────────────────────────────────
-    function buyTicket() external payable nonReentrant {
+    function buyTicket() external payable nonReentrant whenNotPaused {
         if (_nextTokenId >= totalTickets) revert SoldOut();
 
         uint256 price = _getTicketPriceWei();
-        if (msg.value != price) revert WrongPayment(price, msg.value);
+        if (msg.value < price) revert WrongPayment(price, msg.value);
 
         uint256 tokenId = _nextTokenId;
         unchecked { ++_nextTokenId; }
+
+        uint256 excess = msg.value - price;
 
         purchasePrice[tokenId] = price;
         pendingWithdrawals[organizer] += price;
 
         _safeMint(msg.sender, tokenId);
         emit TicketMinted(tokenId, msg.sender, price);
+
+        if (excess > 0) {
+            (bool ok,) = msg.sender.call{value: excess}("");
+            require(ok, "Refund failed");
+        }
     }
 
     // ── Marché secondaire : mise en vente ────────────────────────────────────
-    function listForResale(uint256 tokenId, uint256 price) external {
+    function listForResale(uint256 tokenId, uint256 price) external whenNotPaused {
         if (ownerOf(tokenId) != msg.sender) revert NotTicketOwner();
 
         uint256 maxPrice = purchasePrice[tokenId] * RESALE_CAP_PCT / 100;
@@ -108,10 +128,10 @@ contract BilletChain is ERC721, ReentrancyGuard {
     }
 
     // ── Marché secondaire : achat ────────────────────────────────────────────
-    function buyResale(uint256 tokenId) external payable nonReentrant {
+    function buyResale(uint256 tokenId) external payable nonReentrant whenNotPaused {
         uint256 price = resalePrice[tokenId];
         if (price == 0) revert NotForSale();
-        if (msg.value != price) revert WrongPayment(price, msg.value);
+        if (msg.value < price) revert WrongPayment(price, msg.value);
 
         address seller = ownerOf(tokenId);
 
@@ -119,12 +139,22 @@ contract BilletChain is ERC721, ReentrancyGuard {
         if (getApproved(tokenId) != address(this) && !isApprovedForAll(seller, address(this)))
             revert NotApproved();
 
+        uint256 fee          = price * PLATFORM_FEE_PCT / 100;
+        uint256 sellerAmount = price - fee;
+        uint256 excess       = msg.value - price;
+
         // Mise à jour d'état avant tout transfert (protection réentrance)
         resalePrice[tokenId] = 0;
-        pendingWithdrawals[seller] += price;
+        pendingWithdrawals[seller]    += sellerAmount;
+        pendingWithdrawals[organizer] += fee;
 
         _transfer(seller, msg.sender, tokenId);
         emit TicketSold(tokenId, msg.sender, seller, price);
+
+        if (excess > 0) {
+            (bool ok,) = msg.sender.call{value: excess}("");
+            require(ok, "Refund failed");
+        }
     }
 
     // ── Retrait (pull payment) ───────────────────────────────────────────────

@@ -77,13 +77,13 @@ contract BilletChainTest is Test {
         bc.buyTicket{value: WEI_PRICE - 1}();
     }
 
-    function test_buyTicket_revert_paymentTooHigh() public {
-        vm.deal(alice, WEI_PRICE + 1);
+    function test_buyTicket_refundExcess() public {
+        uint256 excess = 1 ether;
+        vm.deal(alice, WEI_PRICE + excess);
+        uint256 before = alice.balance;
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(BilletChain.WrongPayment.selector, WEI_PRICE, WEI_PRICE + 1)
-        );
-        bc.buyTicket{value: WEI_PRICE + 1}();
+        bc.buyTicket{value: WEI_PRICE + excess}();
+        assertEq(alice.balance, before - WEI_PRICE); // l'excédent est remboursé
     }
 
     function test_buyTicket_revert_soldOut() public {
@@ -191,9 +191,10 @@ contract BilletChainTest is Test {
         vm.prank(bob);
         bc.buyResale{value: resaleP}(tokenId);
 
+        uint256 fee = resaleP * bc.PLATFORM_FEE_PCT() / 100;
         assertEq(bc.ownerOf(tokenId), bob);
         assertEq(bc.resalePrice(tokenId), 0);
-        assertEq(bc.pendingWithdrawals(alice), resaleP);
+        assertEq(bc.pendingWithdrawals(alice), resaleP - fee);
     }
 
     function test_buyResale_emitsEvent() public {
@@ -222,12 +223,24 @@ contract BilletChainTest is Test {
         uint256 tokenId = _buy(alice);
         _listAndApprove(alice, tokenId, WEI_PRICE);
 
-        vm.deal(bob, WEI_PRICE + 1);
+        vm.deal(bob, WEI_PRICE);
         vm.prank(bob);
         vm.expectRevert(
-            abi.encodeWithSelector(BilletChain.WrongPayment.selector, WEI_PRICE, WEI_PRICE + 1)
+            abi.encodeWithSelector(BilletChain.WrongPayment.selector, WEI_PRICE, WEI_PRICE - 1)
         );
-        bc.buyResale{value: WEI_PRICE + 1}(tokenId);
+        bc.buyResale{value: WEI_PRICE - 1}(tokenId);
+    }
+
+    function test_buyResale_refundExcess() public {
+        uint256 tokenId = _buy(alice);
+        _listAndApprove(alice, tokenId, WEI_PRICE);
+
+        uint256 excess = 0.5 ether;
+        vm.deal(bob, WEI_PRICE + excess);
+        uint256 before = bob.balance;
+        vm.prank(bob);
+        bc.buyResale{value: WEI_PRICE + excess}(tokenId);
+        assertEq(bob.balance, before - WEI_PRICE); // l'excédent est remboursé
     }
 
     function test_buyResale_revert_approvalRevoked() public {
@@ -266,12 +279,49 @@ contract BilletChainTest is Test {
         vm.prank(bob);
         bc.buyResale{value: resaleP}(tokenId);
 
+        uint256 fee = resaleP * bc.PLATFORM_FEE_PCT() / 100;
         uint256 before = alice.balance;
         vm.prank(alice);
         bc.withdraw();
 
-        assertEq(alice.balance, before + resaleP);
+        assertEq(alice.balance, before + resaleP - fee);
         assertEq(bc.pendingWithdrawals(alice), 0);
+    }
+
+    function test_bonus_platformFee() public {
+        uint256 tokenId = _buy(alice);
+        uint256 resaleP = WEI_PRICE * 110 / 100;
+        _listAndApprove(alice, tokenId, resaleP);
+
+        uint256 organizerBefore = bc.pendingWithdrawals(organizer);
+
+        vm.deal(bob, resaleP);
+        vm.prank(bob);
+        bc.buyResale{value: resaleP}(tokenId);
+
+        uint256 fee = resaleP * bc.PLATFORM_FEE_PCT() / 100;
+        assertEq(bc.pendingWithdrawals(organizer), organizerBefore + fee);
+        assertEq(bc.pendingWithdrawals(alice), resaleP - fee);
+    }
+
+    function test_bonus_pauseBlocksBuying() public {
+        vm.prank(organizer);
+        bc.pause();
+
+        vm.deal(alice, WEI_PRICE);
+        vm.prank(alice);
+        vm.expectRevert();
+        bc.buyTicket{value: WEI_PRICE}();
+    }
+
+    function test_bonus_unpauseRestoresBuying() public {
+        vm.prank(organizer);
+        bc.pause();
+        vm.prank(organizer);
+        bc.unpause();
+
+        uint256 tokenId = _buy(alice);
+        assertEq(bc.ownerOf(tokenId), alice);
     }
 
     function test_withdraw_revert_nothingToWithdraw() public {

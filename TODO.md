@@ -62,7 +62,7 @@ uint256 private _nextTokenId          // auto-incrément
 - [x] Setup : MockOracle déployé avec RATE=2000e8, WEI_PRICE=25e15 déduit
 - [x] Test achat normal (happy path) + event `TicketMinted`
 - [x] Test achat — paiement trop faible → `WrongPayment`
-- [x] Test achat — paiement trop élevé → `WrongPayment`
+- [x] Test achat — paiement trop élevé → remboursement du trop-perçu
 - [x] Test achat — événement complet → `SoldOut`
 - [x] Test oracle périmé → `StaleOracle` (via `vm.warp`)
 - [x] Test oracle réponse invalide (0 et -1) → `InvalidOracleAnswer`
@@ -72,7 +72,8 @@ uint256 private _nextTokenId          // auto-incrément
 - [x] Test mise en vente — sans approbation → `NotApproved`
 - [x] Test achat secondaire — happy path + event `TicketSold`
 - [x] Test achat secondaire — billet non listé → `NotForSale`
-- [x] Test achat secondaire — mauvais paiement → `WrongPayment`
+- [x] Test achat secondaire — paiement trop faible → `WrongPayment`
+- [x] Test achat secondaire — paiement trop élevé → remboursement du trop-perçu
 - [x] Test achat secondaire — approbation révoquée → `NotApproved`
 - [x] Test retrait — organisateur récupère ses fonds
 - [x] Test retrait — vendeur récupère ses fonds après revente
@@ -80,7 +81,10 @@ uint256 private _nextTokenId          // auto-incrément
 - [x] Test `countForSale` — listing partiel, liste vide, aucun en vente
 - [x] **(Bonus)** Fuzz test plafond 110 % — 256 runs, toujours revert au-dessus du cap
 
-**Résultat : 25/25 tests verts**
+- [x] **(Bonus)** Test frais de plateforme sur revente
+- [x] **(Bonus)** Test pause bloque les achats + unpause les restaure
+
+**Résultat : 29/29 tests verts**
 
 ---
 
@@ -101,7 +105,7 @@ uint256 private _nextTokenId          // auto-incrément
 ---
 
 ## 8. Bonus
-- [ ] Frais de plateforme sur les reventes
-- [ ] Remboursement du trop-perçu
-- [ ] Pause d'urgence (`Pausable` OpenZeppelin)
-- [ ] Fuzz test plafond 110 %
+- [x] Frais de plateforme sur les reventes (5%, via `PLATFORM_FEE_PCT`)
+- [x] Remboursement du trop-perçu (`buyTicket` et `buyResale`)
+- [x] Pause d'urgence (`Pausable` OpenZeppelin, `pause()`/`unpause()` réservés à l'organisateur)
+- [x] Fuzz test plafond 110 %
