@@ -59,19 +59,28 @@ uint256 private _nextTokenId          // auto-incrément
 ---
 
 ## 5. Tests Foundry — `test/BilletChain.t.sol`
-- [ ] Setup : déployer avec MockOracle, fixer un taux
-- [ ] Test achat normal (happy path)
-- [ ] Test achat — paiement trop faible → revert
-- [ ] Test achat — paiement trop élevé → revert
-- [ ] Test achat — événement complet → revert
-- [ ] Test mise en vente — prix > 110 % → revert
-- [ ] Test mise en vente — non propriétaire → revert
-- [ ] Test achat secondaire — billet non listé → revert
-- [ ] Test retrait — vendeur récupère ses fonds
-- [ ] Test retrait — solde nul → revert
-- [ ] Test oracle périmé → revert
-- [ ] Test `countForSale` — retourne le bon décompte
-- [ ] **(Bonus)** Fuzz test : `listForResale(tokenId, price)` → price jamais > 110 %
+- [x] Setup : MockOracle déployé avec RATE=2000e8, WEI_PRICE=25e15 déduit
+- [x] Test achat normal (happy path) + event `TicketMinted`
+- [x] Test achat — paiement trop faible → `WrongPayment`
+- [x] Test achat — paiement trop élevé → `WrongPayment`
+- [x] Test achat — événement complet → `SoldOut`
+- [x] Test oracle périmé → `StaleOracle` (via `vm.warp`)
+- [x] Test oracle réponse invalide (0 et -1) → `InvalidOracleAnswer`
+- [x] Test mise en vente — happy path + exact plafond 110 %
+- [x] Test mise en vente — prix > 110 % → `PriceTooHigh`
+- [x] Test mise en vente — non propriétaire → `NotTicketOwner`
+- [x] Test mise en vente — sans approbation → `NotApproved`
+- [x] Test achat secondaire — happy path + event `TicketSold`
+- [x] Test achat secondaire — billet non listé → `NotForSale`
+- [x] Test achat secondaire — mauvais paiement → `WrongPayment`
+- [x] Test achat secondaire — approbation révoquée → `NotApproved`
+- [x] Test retrait — organisateur récupère ses fonds
+- [x] Test retrait — vendeur récupère ses fonds après revente
+- [x] Test retrait — solde nul → `NothingToWithdraw`
+- [x] Test `countForSale` — listing partiel, liste vide, aucun en vente
+- [x] **(Bonus)** Fuzz test plafond 110 % — 256 runs, toujours revert au-dessus du cap
+
+**Résultat : 25/25 tests verts**
 
 ---
 
