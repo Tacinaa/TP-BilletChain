@@ -85,18 +85,18 @@ uint256 private _nextTokenId          // auto-incrément
 ---
 
 ## 6. Partie théorique
-- [ ] Q1 — Déterminisme + impossibilité d'appeler une API depuis un contrat
-- [ ] Q2 — Signature / clé privée / vérification sans révéler la clé
-- [ ] Q3 — ERC-721 vs ERC-20, cas d'usage fongible
-- [ ] Q4 — 2 vulnérabilités + protection dans votre code
-- [ ] Q5 — 2 décisions concrètes de réduction de gas
+- [x] Q1 — Déterminisme + impossibilité d'appeler une API depuis un contrat
+- [x] Q2 — Signature / clé privée / vérification sans révéler la clé
+- [x] Q3 — ERC-721 vs ERC-20, cas d'usage fongible
+- [x] Q4 — 2 vulnérabilités + protection dans votre code
+- [x] Q5 — 2 décisions concrètes de réduction de gas
 
 ---
 
 ## 7. Note de déploiement
-- [ ] Réseau de test : Sepolia (Chainlink y a des price feeds EUR/ETH)
-- [ ] Valeurs passées au constructeur : `totalTickets`, `priceInEuros`, adresse oracle Chainlink
-- [ ] Adresse du price feed : chercher sur `docs.chain.link` → Sepolia → EUR/ETH
+- [x] Réseau de test : Sepolia (Chainlink y a des price feeds EUR/ETH)
+- [x] Valeurs passées au constructeur : `totalTickets`, `priceInEuros`, adresse oracle Chainlink
+- [x] Adresse du price feed : chercher sur `docs.chain.link` → Sepolia → EUR/ETH
 
 ---
 
